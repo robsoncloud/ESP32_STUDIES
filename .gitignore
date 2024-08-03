@@ -1,0 +1,8 @@
+# Ignorar todas as pastas .devcontainer em qualquer subdiretório
+**/.devcontainer/
+
+# Ignorar todas as pastas .vscode em qualquer subdiretório
+**/.vscode/
+
+# Ignorar todas as pastas build em qualquer subdiretório
+**/build/
