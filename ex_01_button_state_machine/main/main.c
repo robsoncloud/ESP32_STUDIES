@@ -46,9 +46,16 @@ void app_main(void)
     bool check_button_state = false;
     while (1)
     {
+        /* Get the current time */
         uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        /* Read the current state of the button */
         int current_button_state = gpio_get_level(BTN);
 
+        /*
+         * Identify a single press if:
+         * - A button press was previously checked
+         * - The time since the button was pressed is greater than 350 milliseconds
+         */
         if (check_button_state == true && current_time - press_time > 350)
         {
             check_button_state = false;
@@ -57,26 +64,34 @@ void app_main(void)
             printf("Single Press identified\n");
         }
 
+        /* Check if the button state has changed from released to pressed */
         if (current_button_state == 0 && last_button_state == 1)
         {
+            /* Record the time the button was pressed */
             press_time = current_time;
         }
+        /* Check if the button state has changed from pressed to released */
         else if (current_button_state == 1 && last_button_state == 0)
         {
-
+            /* Calculate the time since the button was pressed */
             total_press_time = current_time - press_time;
 
+            /* Increment the press count */
             press_count++;
 
+            /* Check if the press was a long press */
             if (total_press_time > 1000)
             {
+                /* Reset state variables */
                 check_button_state = false;
                 current_state = LONG_PRESS;
                 press_count = 0;
                 printf("Long Press identified\n");
             }
+            /* Check if the press was a double press */
             else if (total_press_time < 300 && press_count == 2)
             {
+                /* Reset state variables */
                 check_button_state = false;
                 current_state = DOUBLE_PRESS;
                 press_count = 0;
@@ -84,35 +99,47 @@ void app_main(void)
             }
             else
             {
+                /* Wait for the button to be released and pressed again */
                 check_button_state = true;
             }
 
+            /* Print debug information */
             printf("Total press time : %lu\n", (unsigned long)total_press_time);
             printf("Count: %d\n", press_count);
             printf("----------------------------------------------------\n");
             printf(" ");
         }
-        
+
+        // Delay for 10 milliseconds to debounce the button press
         vTaskDelay(10 / portTICK_PERIOD_MS);
+
+        // Update the last button state
         last_button_state = current_button_state;
 
+        // Check the current state of the button press
         switch (current_state)
         {
+        // If a single press, turn on the LED
         case SINGLE_PRESS:
             led_state = true;
             break;
+        // If a double press, turn off the LED
         case DOUBLE_PRESS:
             led_state = false;
             break;
+        // If a long press, toggle the LED and delay for 100 milliseconds
         case LONG_PRESS:
             led_state = !led_state;
             vTaskDelay(100 / portTICK_PERIOD_MS);
             break;
+        // If no state is recognized, do nothing
         default:
             break;
         }
 
+        // Set the LED state based on the current state
         gpio_set_level(LED, led_state);
+        
     }
 
     vTaskDelay(100 / portTICK_PERIOD_MS);
