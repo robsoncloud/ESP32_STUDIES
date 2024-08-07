@@ -5,6 +5,7 @@
 
 #define BTN 33
 #define LED 23
+#define DEBOUNCE_TIME 10
 
 typedef enum
 {
@@ -33,6 +34,13 @@ static void configure_led(void)
     gpio_config(&io);
 }
 
+static bool debounce(int pin) {
+    int initial_state = gpio_get_level(pin);
+    vTaskDelay(DEBOUNCE_TIME / portTICK_PERIOD_MS);
+    int final_state = gpio_get_level(pin);
+    return initial_state == final_state;
+}
+
 static button_state_t current_state = IDLE;
 static int last_button_state = 1;
 static uint32_t press_time = 0;
@@ -51,7 +59,7 @@ void app_main(void)
         uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
         /* Read the current state of the button */
         int current_button_state = gpio_get_level(BTN);
-        uint32_t next = 0;
+        
         /*
          * Identify a single press if:
          * - A button press was previously checked
@@ -66,7 +74,7 @@ void app_main(void)
         }
         
         // simple debounce
-        if (current_time > next)
+        if (debounce(BTN))
         {
 
             /* Check if the button state has changed from released to pressed */
@@ -74,7 +82,6 @@ void app_main(void)
             {
                 /* Record the time the button was pressed */
                 press_time = current_time;
-                next = current_time + 30;
             }
             /* Check if the button state has changed from pressed to released */
             else if (current_button_state == 1 && last_button_state == 0)
@@ -86,7 +93,7 @@ void app_main(void)
                 press_count++;
 
                 /* Check if the press was a long press */
-                if (total_press_time > 1000)
+                if (total_press_time > 700)
                 {
                     /* Reset state variables */
                     check_button_state = false;
@@ -116,7 +123,7 @@ void app_main(void)
             else if (current_button_state == 0 && last_button_state == 0)
             {
                 total_press_time = current_time - press_time;
-                if (total_press_time > 1000 && current_state != LONG_PRESS)
+                if (total_press_time > 700 && current_state != LONG_PRESS)
                 {
                     current_state = LONG_PRESS;
                     printf("Long Press identified - took: %lu\n", (unsigned long)total_press_time);
